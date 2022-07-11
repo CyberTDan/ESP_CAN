@@ -2051,6 +2051,69 @@
                 "range": null,
                 "title": "Maximal STA connections",
                 "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "EXAMPLE_IPV4",
+                "name": "EXAMPLE_IPV4",
+                "range": null,
+                "title": "IPV4",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "EXAMPLE_IPV6",
+                "name": "EXAMPLE_IPV6",
+                "range": null,
+                "title": "IPV6",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Local port the example server will listen on.",
+                "id": "EXAMPLE_PORT",
+                "name": "EXAMPLE_PORT",
+                "range": [
+                    0,
+                    65535
+                ],
+                "title": "Port",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Keep-alive idle time. In idle time without receiving any data from peer, will send keep-alive probe packet",
+                "id": "EXAMPLE_KEEPALIVE_IDLE",
+                "name": "EXAMPLE_KEEPALIVE_IDLE",
+                "range": null,
+                "title": "TCP keep-alive idle time(s)",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Keep-alive probe packet interval time.",
+                "id": "EXAMPLE_KEEPALIVE_INTERVAL",
+                "name": "EXAMPLE_KEEPALIVE_INTERVAL",
+                "range": null,
+                "title": "TCP keep-alive interval time(s)",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Keep-alive probe packet retry count.",
+                "id": "EXAMPLE_KEEPALIVE_COUNT",
+                "name": "EXAMPLE_KEEPALIVE_COUNT",
+                "range": null,
+                "title": "TCP keep-alive packet retry send counts",
+                "type": "int"
             }
         ],
         "depends_on": null,

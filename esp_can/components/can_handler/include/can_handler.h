@@ -1,1 +1,1 @@
-void func1(void);
+void launchCanTask(void);
