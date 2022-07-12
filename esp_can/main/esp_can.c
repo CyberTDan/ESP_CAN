@@ -8,11 +8,13 @@
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "wifi_ap.h"
-//#include "can_handler.h"
+#include "can_handler.h"
+#include "tcp_protocol.h"
 
 
 void app_main(void)
@@ -42,7 +44,19 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    /*************QUEUE for wifi and cancommunication*************/
+    vTaskDelay(pdMS_TO_TICKS(4000));
+    QueueHandle_t wifi_can_queue = xQueueCreate( 20, sizeof( queue_msg_t* ) );
+    if (wifi_can_queue != 0){
+        printf("Queue initilized succesfully\n");
+    } else {
+        printf("Queue initilization failed\n");
+    }
+
 
     /*************START WIFI TASK*************/
-    launchWifiTask();
+    launchWifiTask(wifi_can_queue);
+
+    /**************START CAN TASK************/
+    xTaskCreatePinnedToCore(launchCanTask, "CAN_rx", 4096, wifi_can_queue, 9, NULL, tskNO_AFFINITY);
 }

@@ -70,5 +70,6 @@
 /root/esp/ESP_CAN/esp_can/build/esp-idf/ulp/libulp.a
 /root/esp/ESP_CAN/esp_can/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
 /root/esp/ESP_CAN/esp_can/build/esp-idf/main/libmain.a
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/libtcp_protocol.a
 /root/esp/ESP_CAN/esp_can/build/esp-idf/can_handler/libcan_handler.a
 /root/esp/ESP_CAN/esp_can/build/esp-idf/wifi_ap/libwifi_ap.a

@@ -10,6 +10,8 @@
 #include "esp_log.h"
 #include "driver/can.h"
 
+#include "tcp_protocol.h"
+
 
 #define NO_OF_ITERS                     3
 #define RX_TASK_PRIO                    9
@@ -39,24 +41,38 @@ static const can_general_config_t g_config = {.mode = CAN_MODE_LISTEN_ONLY,
 static SemaphoreHandle_t rx_sem;
 
 
-static void can_receive_task(void *arg)
+static void can_receive_task(QueueHandle_t wifi_can_queue)
 {
-    xSemaphoreTake(rx_sem, portMAX_DELAY);
-    bool start_cmd = false;
-    bool stop_resp = false;
-    uint32_t iterations = 0;
 
-    while (iterations < NO_OF_ITERS) {
+    while (1) {
         can_message_t rx_msg;
-        can_receive(&rx_msg, portMAX_DELAY);
-        printf("Reseived Can message:\n");
-        printf("    Msg ID: %d\n", rx_msg.identifier);
-        printf("    Message length: %d\n", rx_msg.data_length_code);
-        printf("    ");
-        for(int i = 0; i < rx_msg.data_length_code; i++){
-            printf("%d  ", rx_msg.data[i]);
+        // can_receive(&rx_msg, portMAX_DELAY);
+        // printf("Reseived Can message:\n");
+        // printf("    Msg ID: %d\n", rx_msg.identifier);
+        // printf("    Message length: %d\n", rx_msg.data_length_code);
+        // printf("    ");
+        // for(int i = 0; i < rx_msg.data_length_code; i++){
+        //     printf("%d  ", rx_msg.data[i]);
+        // }
+        // printf("\n");
+
+        //  fill can msg
+        rx_msg.identifier = 10001;
+        rx_msg.data_length_code = 8;
+        for(int i = 0; i < 8; i++) rx_msg.data[i] = i+6;
+        //  create json str
+        char* data = (char*) malloc(100*sizeof(char));
+        convert_can_frame(data, 100, &rx_msg);
+
+        queue_msg_t* queue_msg = (queue_msg_t*) malloc( sizeof(queue_msg_t) );
+        queue_msg->length = 100;
+        queue_msg->message = data;
+        if( xQueueSendToBack( wifi_can_queue, ( void * ) &queue_msg, ( TickType_t ) 10 ) != pdPASS )
+        {
+            printf("transmition failed\n");
         }
-        printf("\n");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
         // if (rx_msg.identifier == ID_MASTER_PING) {
         //     ESP_LOGI(EXAMPLE_TAG, "Received master ping");
         // } else if (rx_msg.identifier == ID_SLAVE_PING_RESP) {
@@ -84,24 +100,25 @@ static void can_receive_task(void *arg)
         // }
     }
 
-    xSemaphoreGive(rx_sem);
-    vTaskDelete(NULL);
+    
 }
 
-void launchCanTask(void)
-{
-    rx_sem = xSemaphoreCreateBinary();
-    xTaskCreatePinnedToCore(can_receive_task, "CAN_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
 
+
+void launchCanTask(void * pvParameters)
+{
+    QueueHandle_t wifi_can_queue = (QueueHandle_t) pvParameters;
     //Install and start CAN driver
     ESP_ERROR_CHECK(can_driver_install(&g_config, &t_config, &f_config));
     ESP_LOGI(EXAMPLE_TAG, "Driver installed");
     ESP_ERROR_CHECK(can_start());
     ESP_LOGI(EXAMPLE_TAG, "Driver started");
 
-    xSemaphoreGive(rx_sem);                     //Start RX task
-    vTaskDelay(pdMS_TO_TICKS(100));
-    xSemaphoreTake(rx_sem, portMAX_DELAY);      //Wait for RX task to complete
+    
+
+
+    can_receive_task(wifi_can_queue);
+    //vTaskDelay(pdMS_TO_TICKS(100));
 
     //Stop and uninstall CAN driver
     ESP_ERROR_CHECK(can_stop());
@@ -109,6 +126,5 @@ void launchCanTask(void)
     ESP_ERROR_CHECK(can_driver_uninstall());
     ESP_LOGI(EXAMPLE_TAG, "Driver uninstalled");
 
-    //Cleanup
-    vSemaphoreDelete(rx_sem);
+    vTaskDelete(NULL);
 }

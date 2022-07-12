@@ -1,6 +1,7 @@
 {
     "makefile.extensionOutputFolder": "./.vscode",
     "files.associations": {
-        "wifi_ap.h": "c"
+        "wifi_ap.h": "c",
+        "tcp_protocol.h": "c"
     }
 }

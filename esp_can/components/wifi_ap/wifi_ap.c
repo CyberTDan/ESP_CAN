@@ -4,6 +4,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -17,6 +18,13 @@
 #include <sys/param.h>
 #include "lwip/sockets.h"
 #include <lwip/netdb.h>
+
+/********Queue data type*******/
+#include "tcp_protocol.h"
+
+// test 
+#include <stdint.h>
+
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
@@ -35,6 +43,11 @@
 
 
 static const char *TAG = "wifi_softAP_TCP";
+
+typedef struct{
+    int addr_family;
+    QueueHandle_t wifi_can_queue;
+} tcp_task_parameters_t;
 
 
 /********TCP Server Part*******/
@@ -70,8 +83,25 @@ static void do_retransmit(const int sock)
 
 static void tcp_server_task(void *pvParameters)
 {
+    tcp_task_parameters_t* parameters = (tcp_task_parameters_t*)pvParameters;
+    QueueHandle_t wifi_can_queue = parameters->wifi_can_queue;
+    int addr_family = parameters->addr_family;
+
+    while(1){
+        queue_msg_t* queue_struct;
+        if( xQueueReceive( wifi_can_queue, &( queue_struct ), ( TickType_t ) 10 ) != pdPASS )
+        {
+            printf("Receiption failed\n");
+        } else {
+            printf("Received zize: %d\n", queue_struct->length);
+            printf("Received string: %s\n", queue_struct->message);
+            free(queue_struct->message);
+            free(queue_struct);
+        }
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+
     char addr_str[128];
-    int addr_family = (int)pvParameters;
     int ip_protocol = 0;
     int keepAlive = 1;
     int keepIdle = KEEPALIVE_IDLE;
@@ -220,14 +250,73 @@ void wifi_init_softap(void)
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
 }
 
-void launchWifiTask(void)
+
+
+static void TX_Task(void* pvParameters){
+    printf("TX task launched...\n");
+    QueueHandle_t xQueue1 = (QueueHandle_t )pvParameters;
+    
+    while(1){
+        queue_msg_t* queue_struct = (queue_msg_t*) malloc( sizeof(queue_msg_t) );
+        char* data = (char*) malloc(9*sizeof(char));
+        memset(data, 0, 9);
+
+        for(int i = 0; i < 8; i++) data[i] = i+65;
+        queue_struct->length = 8;
+        queue_struct->message = data;
+
+
+        if( xQueueSendToBack( xQueue1, ( void * ) &queue_struct, ( TickType_t ) 10 ) != pdPASS )
+        {
+            printf("transmition failed\n");
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+static void RX_Task(void* pvParameters){
+    printf("TX task launched...\n");
+    QueueHandle_t xQueue1 =  (QueueHandle_t )pvParameters;
+
+    while(1){
+        queue_msg_t* queue_struct;
+        if( xQueueReceive( xQueue1, &( queue_struct ), ( TickType_t ) 10 ) != pdPASS )
+        {
+            printf("Receiption failed\n");
+        } else {
+            printf("Received zize: %d\n", queue_struct->length);
+            printf("Received string: %s\n", queue_struct->message);
+            free(queue_struct->message);
+            free(queue_struct);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+void launchWifiTask(QueueHandle_t wifi_can_queue)
 {
     /*****Wifi AP Initilazation ****/
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    wifi_init_softap();
+    // ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    // wifi_init_softap();
+
+    // QueueHandle_t xQueue1 = xQueueCreate( 10, sizeof( queue_msg_t* ) );
+    // if(wifi_can_queue != 0){
+    //     xTaskCreate( TX_Task, "NAME", 4096, wifi_can_queue, 9, NULL );
+        // xTaskCreate( RX_Task, "NAME", 4096, wifi_can_queue, 9, NULL );
+    //     printf("Tasks Launched\n");
+
+    // } else {
+    //     printf("\n\n!!!!!!!!!!!!! Queue do now created !!!!!!!!!!!!!!\n\n");
+    // }
 
     /********TCP Server Initialization ********/
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+    // xTaskCreate( RX_Task, "NAME", 4096, (void*)wifi_can_queue, 9, NULL );
+    tcp_task_parameters_t* pvParameters = (tcp_task_parameters_t*) malloc( sizeof(tcp_task_parameters_t) );
+    pvParameters->addr_family = AF_INET;
+    pvParameters->wifi_can_queue = wifi_can_queue;
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, pvParameters, 9, NULL);
+
+
 }
 
 

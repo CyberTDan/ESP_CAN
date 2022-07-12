@@ -117,6 +117,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/root/esp/ESP_CAN/esp_can/build/esp-idf/ulp/cmake_install.cmake")
   include("/root/esp/ESP_CAN/esp_can/build/esp-idf/wifi_provisioning/cmake_install.cmake")
   include("/root/esp/ESP_CAN/esp_can/build/esp-idf/main/cmake_install.cmake")
+  include("/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/cmake_install.cmake")
   include("/root/esp/ESP_CAN/esp_can/build/esp-idf/can_handler/cmake_install.cmake")
   include("/root/esp/ESP_CAN/esp_can/build/esp-idf/wifi_ap/cmake_install.cmake")
 

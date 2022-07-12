@@ -676,6 +676,13 @@
 /root/esp/ESP_CAN/esp_can/build/esp-idf/main/CMakeFiles/rebuild_cache.dir
 /root/esp/ESP_CAN/esp_can/build/esp-idf/main/CMakeFiles/edit_cache.dir
 /root/esp/ESP_CAN/esp_can/build/esp-idf/main/CMakeFiles/__idf_main.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/install/strip.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/install/local.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/install.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/list_install_components.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/rebuild_cache.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/edit_cache.dir
+/root/esp/ESP_CAN/esp_can/build/esp-idf/tcp_protocol/CMakeFiles/__idf_tcp_protocol.dir
 /root/esp/ESP_CAN/esp_can/build/esp-idf/can_handler/CMakeFiles/install/strip.dir
 /root/esp/ESP_CAN/esp_can/build/esp-idf/can_handler/CMakeFiles/install/local.dir
 /root/esp/ESP_CAN/esp_can/build/esp-idf/can_handler/CMakeFiles/install.dir

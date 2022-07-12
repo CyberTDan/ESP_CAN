@@ -1,9 +1,31 @@
 # ESP_CAN
 
-## Installation
+## Development toolKit 
 
-To install all feachures for developing on ESP32 please follow installation guide:
+All tools required for building and flashing ESP32 installed in doker.
+To build docker run from ESP_CAN directory:
 
-https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
+```
+./scripts/docker.sh build
+```
+
+To run docker image run:
+
+```
+./scripts/docker.sh run
+```
+
+To flash program to ESP connect it before running docker.
+To check wich serial port is used run:
+
+```
+ls /dev | grep -i ttyUSB
+```
+
+To build and flash run:
+
+```
+idf.py -p /dev/ttyUSB<port_number> build flash monitor
+```
 
 sudo chown -R $USER ESP_CAN/
