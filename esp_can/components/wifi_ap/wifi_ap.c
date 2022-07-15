@@ -52,33 +52,30 @@ typedef struct{
 
 /********TCP Server Part*******/
 
-static void do_retransmit(const int sock)
+static void do_retransmit(const int sock, QueueHandle_t wifi_can_queue)
 {
-    int len;
-    char rx_buffer[128];
 
-    do {
-        len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-        if (len < 0) {
-            ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        } else if (len == 0) {
-            ESP_LOGW(TAG, "Connection closed");
+    for(;;){
+        queue_msg_t* queue_struct;
+        if( xQueueReceive( wifi_can_queue, &( queue_struct ), ( TickType_t ) 10 ) != pdPASS )
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
         } else {
-            rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-            ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+            printf("Received zize: %d\n", queue_struct->length);
+            printf("Received string: %s\n", queue_struct->message);
 
-            // send() can return less bytes than supplied length.
-            // Walk-around for robust implementation.
-            int to_write = len;
+            int to_write = queue_struct->length;
             while (to_write > 0) {
-                int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
+                int written = send(sock, queue_struct->message + (queue_struct->length - to_write), to_write, 0);
                 if (written < 0) {
                     ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 }
                 to_write -= written;
             }
+            free(queue_struct->message);
+            free(queue_struct);
         }
-    } while (len > 0);
+    }
 }
 
 static void tcp_server_task(void *pvParameters)
@@ -86,20 +83,6 @@ static void tcp_server_task(void *pvParameters)
     tcp_task_parameters_t* parameters = (tcp_task_parameters_t*)pvParameters;
     QueueHandle_t wifi_can_queue = parameters->wifi_can_queue;
     int addr_family = parameters->addr_family;
-
-    while(1){
-        queue_msg_t* queue_struct;
-        if( xQueueReceive( wifi_can_queue, &( queue_struct ), ( TickType_t ) 10 ) != pdPASS )
-        {
-            printf("Receiption failed\n");
-        } else {
-            printf("Received zize: %d\n", queue_struct->length);
-            printf("Received string: %s\n", queue_struct->message);
-            free(queue_struct->message);
-            free(queue_struct);
-        }
-        vTaskDelay(pdMS_TO_TICKS(2000));
-    }
 
     char addr_str[128];
     int ip_protocol = 0;
@@ -116,15 +99,6 @@ static void tcp_server_task(void *pvParameters)
         dest_addr_ip4->sin_port = htons(PORT);
         ip_protocol = IPPROTO_IP;
     }
-#ifdef CONFIG_EXAMPLE_IPV6
-    else if (addr_family == AF_INET6) {
-        struct sockaddr_in6 *dest_addr_ip6 = (struct sockaddr_in6 *)&dest_addr;
-        bzero(&dest_addr_ip6->sin6_addr.un, sizeof(dest_addr_ip6->sin6_addr.un));
-        dest_addr_ip6->sin6_family = AF_INET6;
-        dest_addr_ip6->sin6_port = htons(PORT);
-        ip_protocol = IPPROTO_IPV6;
-    }
-#endif
 
     int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
     if (listen_sock < 0) {
@@ -134,11 +108,6 @@ static void tcp_server_task(void *pvParameters)
     }
     int opt = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-#if defined(CONFIG_EXAMPLE_IPV4) && defined(CONFIG_EXAMPLE_IPV6)
-    // Note that by default IPV6 binds to both protocols, it is must be disabled
-    // if both protocols used at the same time (used in CI)
-    setsockopt(listen_sock, IPPROTO_IPV6, IPV6_V6ONLY, &opt, sizeof(opt));
-#endif
 
     ESP_LOGI(TAG, "Socket created");
 
@@ -177,14 +146,9 @@ static void tcp_server_task(void *pvParameters)
         if (source_addr.ss_family == PF_INET) {
             inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
         }
-#ifdef CONFIG_EXAMPLE_IPV6
-        else if (source_addr.ss_family == PF_INET6) {
-            inet6_ntoa_r(((struct sockaddr_in6 *)&source_addr)->sin6_addr, addr_str, sizeof(addr_str) - 1);
-        }
-#endif
         ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
 
-        do_retransmit(sock);
+        do_retransmit(sock, wifi_can_queue);
 
         shutdown(sock, 0);
         close(sock);
@@ -197,7 +161,7 @@ CLEAN_UP:
 
 
 
-/********Wifi AP Part*******/
+/*************Wifi AP Part************/
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
@@ -251,66 +215,13 @@ void wifi_init_softap(void)
 }
 
 
-
-static void TX_Task(void* pvParameters){
-    printf("TX task launched...\n");
-    QueueHandle_t xQueue1 = (QueueHandle_t )pvParameters;
-    
-    while(1){
-        queue_msg_t* queue_struct = (queue_msg_t*) malloc( sizeof(queue_msg_t) );
-        char* data = (char*) malloc(9*sizeof(char));
-        memset(data, 0, 9);
-
-        for(int i = 0; i < 8; i++) data[i] = i+65;
-        queue_struct->length = 8;
-        queue_struct->message = data;
-
-
-        if( xQueueSendToBack( xQueue1, ( void * ) &queue_struct, ( TickType_t ) 10 ) != pdPASS )
-        {
-            printf("transmition failed\n");
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-static void RX_Task(void* pvParameters){
-    printf("TX task launched...\n");
-    QueueHandle_t xQueue1 =  (QueueHandle_t )pvParameters;
-
-    while(1){
-        queue_msg_t* queue_struct;
-        if( xQueueReceive( xQueue1, &( queue_struct ), ( TickType_t ) 10 ) != pdPASS )
-        {
-            printf("Receiption failed\n");
-        } else {
-            printf("Received zize: %d\n", queue_struct->length);
-            printf("Received string: %s\n", queue_struct->message);
-            free(queue_struct->message);
-            free(queue_struct);
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
 void launchWifiTask(QueueHandle_t wifi_can_queue)
 {
     /*****Wifi AP Initilazation ****/
-    // ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    // wifi_init_softap();
-
-    // QueueHandle_t xQueue1 = xQueueCreate( 10, sizeof( queue_msg_t* ) );
-    // if(wifi_can_queue != 0){
-    //     xTaskCreate( TX_Task, "NAME", 4096, wifi_can_queue, 9, NULL );
-        // xTaskCreate( RX_Task, "NAME", 4096, wifi_can_queue, 9, NULL );
-    //     printf("Tasks Launched\n");
-
-    // } else {
-    //     printf("\n\n!!!!!!!!!!!!! Queue do now created !!!!!!!!!!!!!!\n\n");
-    // }
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    wifi_init_softap();
 
     /********TCP Server Initialization ********/
-    // xTaskCreate( RX_Task, "NAME", 4096, (void*)wifi_can_queue, 9, NULL );
     tcp_task_parameters_t* pvParameters = (tcp_task_parameters_t*) malloc( sizeof(tcp_task_parameters_t) );
     pvParameters->addr_family = AF_INET;
     pvParameters->wifi_can_queue = wifi_can_queue;
